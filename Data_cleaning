@@ -1,9 +1,0 @@
-import requests as rq
-url = "http://127.0.0.1:8000/transactions"
-response = rq.get(url)
-data = response.json()
-transactions = data["transactions"]
-transaction_ids = []
-for ids in transactions:
-    transaction_ids.append(ids["transaction_id"])
-    print(transaction_ids)
