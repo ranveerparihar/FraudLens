@@ -17,4 +17,4 @@ PBL_venv/
 Thumbs.db
 Desktop.ini
 
-*.log
+*.logvenv/
