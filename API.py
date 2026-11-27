@@ -1,5 +1,6 @@
 
-from fastapi import FastAPI, Query, FileResponse 
+from fastapi import FastAPI, Query
+from fastapi.responses import FileResponse
 from pathlib import Path
 from fastapi.middleware.cors import CORSMiddleware
 import sqlite3 as sq
@@ -109,6 +110,14 @@ def get_alerts(
                 ORDER BY source_rowid DESC
                 LIMIT ?
             """, (limit,)).fetchall()
+        alerts = []
+        for row in rows:
+            item = dict(row)
+            item["triggered_rules"] = json.loads(item.get("triggered_rules") or "[]")
+            item["data_quality_issues"] = json.loads(item.get("data_quality_issues") or "[]")
+            alerts.append(item)
+
+    return {"count": len(alerts), "alerts": alerts}
 
 
 @app.get("/stats")
@@ -124,6 +133,15 @@ def get_stats():
             FROM fraud_detection_results
         """).fetchone()
 
+        region_rows = conn.execute("""
+            SELECT city, state, COUNT(*) AS alerts
+            FROM fraud_detection_results
+            WHERE is_flagged = 1 AND city IS NOT NULL
+            GROUP BY city, state
+            ORDER BY alerts DESC
+            LIMIT 10
+        """).fetchall()
+
         total_scanned = row["total_scanned"]
         total_flagged = row["total_flagged"]
         fraud_rate = round((total_flagged / total_scanned) * 100, 2) if total_scanned > 0 else 0.0
@@ -134,6 +152,7 @@ def get_stats():
             "fraud_rate_percent": fraud_rate,
             "rule_flagged": row["rule_flagged"],
             "if_flagged": row["if_flagged"],
-            "lof_flagged": row["lof_flagged"]
+            "lof_flagged": row["lof_flagged"],
+            "top_regions": [dict(r) for r in region_rows]
         }
 
